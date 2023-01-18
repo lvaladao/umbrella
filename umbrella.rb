@@ -1,41 +1,46 @@
-p "Where are you located?"
-
-# user_location = gets.chomp
-
-user_location = "Taj Mahal"
-
-p user_location
-
 require "open-uri"
-
-gmaps_api_endpoint = "https://maps.googleapis.com/maps/api/geocode/json?address=" + user_location + "&key=AIzaSyAgRzRHJZf-uoevSnYDTf08or8QFS_fb3U"
-
-# using_gsub = "https://maps.googleapis.com/maps/api/geocode/json?address=PLACEHOLDER&key=AIzaSyAgRzRHJZf-uoevSnYDTf08or8QFS_fb3U".gsub("PLACEHOLDER", user_location)
-
-# using_interpolation = "https://maps.googleapis.com/maps/api/geocode/json?address=#{ user_location}&key=AIzaSyAgRzRHJZf-uoevSnYDTf08or8QFS_fb3U"
-
-# p gmaps_api_endpoint
-
-raw_data = URI.open(gmaps_api_endpoint).read
-
 require "json"
 
-parsed_data = JSON.parse(raw_data)
+puts "========================================"
+puts "    Will you need an umbrella today?    "
+puts "========================================"
+puts ""
+puts "Where are you?"
 
-results_array = parsed_data.fetch("results")
+user_location = gets.chomp
 
-first_result = results_array.at(0)
+puts "Checking the weather at " + user_location + "...."
 
-geo = first_result.fetch("geometry")
-
-loc = geo.fetch("location")
-
+gmaps_api_endpoint = "https://maps.googleapis.com/maps/api/geocode/json?address=" + user_location + "&key=" + ENV.fetch("GMAPS_KEY")
+gmaps_parsed_data = JSON.parse(URI.open(gmaps_api_endpoint).read)
+gmaps_results_array = gmaps_parsed_data.fetch("results")
+loc = gmaps_results_array[0].fetch("geometry").fetch("location")
 latitude = loc.fetch("lat")
 longitude = loc.fetch("lng")
 
-p latitude
-p longitude
+puts "Your coordinates are " + latitude.to_s + ", " + longitude.to_s + "."
 
-# Use latitude and longitude to compose the correct
-#   endpoint in Dark Sky's API
-# Print the current temperature
+darksky_api_endpoint = "https://api.darksky.net/forecast/" + ENV.fetch("DARK_SKY_KEY") + "/" + latitude.to_s + "," + longitude.to_s
+darksky_parsed_data = JSON.parse(URI.open(darksky_api_endpoint).read)
+temperature = darksky_parsed_data.fetch("currently").fetch("temperature")
+summary = darksky_parsed_data.fetch("minutely").fetch("summary")
+
+puts "It is currently " + temperature.to_s + "°F."
+puts "Next hour: " + summary
+
+hourly_array = darksky_parsed_data.fetch("hourly").fetch("data")
+umbrella = false
+
+13.times do |hour|
+  probability = hourly_array[hour].fetch("precipProbability")
+  if probability > 0.1 && hour > 0
+    puts "In " + (hour).to_s + " hours, there is a " + (probability * 100).round.to_s + "% chance of precipitation."
+    umbrella = true
+  end
+end
+
+if umbrella
+  puts "You might want to take an umbrella!"
+else
+  puts "You probably won't need an umbrella."
+end
